@@ -42,24 +42,26 @@ print('Inputs')
 ###############################################################################################################################
 
 'Define the variable(s) to forecast, in a list'
-var1 = 'CP1 Plugged'
-var2 = 'CP1 req (kWh)'
-var3 = 'CP2 Plugged'
-var4 = 'CP2 req (kWh)'
-var5 = 'PV gen #1 (kWh)'
-var6 = 'PV gen #2 (kWh)'
-var7 = 'PV gen #3 (kWh)'
-var8 = 'build cons #1 (kWh)'
-var9 = 'build cons #2 (kWh)'
-var10 = 'build cons #3 (kWh)'
-var11 = 'congestion mgmt cons (60% th)'
-var12 = 'congestion mgmt gen (17,5% th)'
-var13 = 'wind curtail (500 EVs)'
+var1 = 'CP1 ID'
+var2 = 'CP1 Plugged'
+var3 = 'CP1 req (kWh)'
+var4 = 'CP2 ID'
+var5 = 'CP2 Plugged'
+var6 = 'CP2 req (kWh)'
+var7 = 'PV gen #1 (kWh)'
+var8 = 'PV gen #2 (kWh)'
+var9 = 'PV gen #3 (kWh)'
+var10 = 'build cons #1 (kWh)'
+var11 = 'build cons #2 (kWh)'
+var12 = 'build cons #3 (kWh)'
+var13 = 'congestion mgmt cons (60% th)'
+var14 = 'congestion mgmt gen (17,5% th)'
+var15 = 'wind curtail (500 EVs)'
 
 # forecast_var = [var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-#                 var11, var12, var13]
+#                 var11, var12, var13, var14, var15]
 
-forecast_var = [var13]
+forecast_var = [var1, var2, var3]
 
 print('Forecasting variable(s):', forecast_var)
 
@@ -135,17 +137,17 @@ for season in forecast_period:
 ###############################################################################################################################
     
     'Checking that plug and energy variables are included together in forecast_var'
-    if var1 in forecast_var and var2 not in forecast_var or var1 not in forecast_var and var2 in forecast_var:
-        print(f'To forecast plug and energy you need to include both var1[{var1}] and var2[{var2}] in Forecasting variable(s)')
+    if var2 in forecast_var and var3 not in forecast_var or var2 not in forecast_var and var3 in forecast_var:
+        print(f'To forecast plug and energy you need to include both var2[{var2}] and var3[{var3}] in Forecasting variable(s)')
         break
     
-    if var3 in forecast_var and var4 not in forecast_var or var3 not in forecast_var and var4 in forecast_var:
-        print(f'To forecast plug and energy you need to include both var3[{var3}] and var4[{var4}] in Forecasting variable(s)')
+    if var4 in forecast_var and var5 not in forecast_var or var4 not in forecast_var and var5 in forecast_var:
+        print(f'To forecast plug and energy you need to include both var4[{var4}] and var5[{var5}] in Forecasting variable(s)')
         break
     
-    'Forecast of var1 and var2: CP1 Plugged and CP1 req (kWh)'
-    if var1 and var2 in forecast_var:
-        cp1_plug_energy = Plug_and_Energy.forecast(data_filtered, [var1, var2], season, start_forecast)
+    'Forecast of var1, var2 and var3: CP1 ID, CP1 Plugged and CP1 req (kWh)'
+    if var1 and var2 and var3 in forecast_var:
+        cp1_plug_energy = Plug_and_Energy.forecast(data_filtered, [var1, var2, var3], season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -160,9 +162,9 @@ for season in forecast_period:
         elif season == 'Fall':
             forecast_fall = forecast_fall.join(cp1_plug_energy)
         
-    'Forecast of var3 and var4: CP2 Plugged and CP2 req (kWh)'
-    if var3 and var4 in forecast_var:
-        cp2_plug_energy = Plug_and_Energy.forecast(data_filtered, [var3, var4], season, start_forecast)
+    'Forecast of var4, var5 and var6: CP2 ID, CP2 Plugged and CP2 req (kWh)'
+    if var4 and var5 and var6 in forecast_var:
+        cp2_plug_energy = Plug_and_Energy.forecast(data_filtered, [var4, var5, var6], season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -181,9 +183,9 @@ for season in forecast_period:
     print('###################################PV Generation######################################')
 ###############################################################################################################################
     
-    'Forecast of var5: PV gen #1 (kWh)'
-    if var5 in forecast_var:
-        pvgen1 = PV_generation.forecast(data_filtered, var5, season, start_forecast)
+    'Forecast of var7: PV gen #1 (kWh)'
+    if var7 in forecast_var:
+        pvgen1 = PV_generation.forecast(data_filtered, var7, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -198,9 +200,9 @@ for season in forecast_period:
         elif season == 'Fall':
             forecast_fall = forecast_fall.join(pvgen1)
             
-    'Forecast of var6: PV gen #2 (kWh)'
-    if var6 in forecast_var:
-        pvgen2 = PV_generation.forecast(data_filtered, var6, season, start_forecast)
+    'Forecast of var8: PV gen #2 (kWh)'
+    if var8 in forecast_var:
+        pvgen2 = PV_generation.forecast(data_filtered, var8, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -215,9 +217,9 @@ for season in forecast_period:
         elif season == 'Fall':
             forecast_fall = forecast_fall.join(pvgen2)
             
-    'Forecast of var7: PV gen #3 (kWh)'
-    if var7 in forecast_var:
-        pvgen3 = PV_generation.forecast(data_filtered, var7, season, start_forecast)
+    'Forecast of var9: PV gen #3 (kWh)'
+    if var9 in forecast_var:
+        pvgen3 = PV_generation.forecast(data_filtered, var9, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -236,9 +238,9 @@ for season in forecast_period:
     print('###########################Load (Building Consumption)################################')
 ###############################################################################################################################
             
-    'Forecast of var8: build cons #1 (kWh)'
-    if var8 in forecast_var:
-        load1 = Load.forecast(data_filtered, var8, season, start_forecast)
+    'Forecast of var10: build cons #1 (kWh)'
+    if var10 in forecast_var:
+        load1 = Load.forecast(data_filtered, var10, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -253,9 +255,9 @@ for season in forecast_period:
         elif season == 'Fall':
             forecast_fall = forecast_fall.join(load1)
     
-    'Forecast of var9: build cons #2 (kWh)'
-    if var9 in forecast_var:
-        load2 = Load.forecast(data_filtered, var9, season, start_forecast)
+    'Forecast of var11: build cons #2 (kWh)'
+    if var11 in forecast_var:
+        load2 = Load.forecast(data_filtered, var11, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -270,9 +272,9 @@ for season in forecast_period:
         elif season == 'Fall':
             forecast_fall = forecast_fall.join(load2)
             
-    'Forecast of var10: build cons #3 (kWh)'
-    if var10 in forecast_var:
-        load3 = Load.forecast(data_filtered, var10, season, start_forecast)
+    'Forecast of var12: build cons #3 (kWh)'
+    if var12 in forecast_var:
+        load3 = Load.forecast(data_filtered, var12, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -292,13 +294,13 @@ for season in forecast_period:
 ###############################################################################################################################
     
     'Checking that congestion variables are included together in forecast_var'
-    if var11 in forecast_var and var12 not in forecast_var or var11 not in forecast_var and var12 in forecast_var:
-        print(f'To forecast congestion service you need to include both var11[{var11}] and var12[{var12}] in Forecasting variable(s)')
+    if var13 in forecast_var and var14 not in forecast_var or var13 not in forecast_var and var14 in forecast_var:
+        print(f'To forecast congestion service you need to include both var13[{var13}] and var14[{var14}] in Forecasting variable(s)')
         break
     
-    'Forecast of var11 and var12: congestion mgmt cons (60% th) and congestion mgmt gen (17,5% th)'
-    if var11 and var12 in forecast_var:
-        congestion = Congestion_service.forecast([var11, var12], season, start_forecast)
+    'Forecast of var13 and var14: congestion mgmt cons (60% th) and congestion mgmt gen (17,5% th)'
+    if var13 and var14 in forecast_var:
+        congestion = Congestion_service.forecast([var13, var14], season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -317,9 +319,9 @@ for season in forecast_period:
     print('#############################Wind Curtailment Service#################################')
 ###############################################################################################################################
 
-    'Forecast of var13: wind curtail (500 EVs)'
-    if var13 in forecast_var:
-        wind_curtailment = Wind_curtailment_service.forecast(var13, season, start_forecast)
+    'Forecast of var15: wind curtail (500 EVs)'
+    if var15 in forecast_var:
+        wind_curtailment = Wind_curtailment_service.forecast(var15, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
