@@ -50,5 +50,6 @@ Auxiliary script that forecast var13 and var14 together:
 - congestion mgmt gen (17,5% th): Indicates whether the user participates (1) or not (0) in network congestion management services assuming a 17,5% PT capacity threshold. Regression using Random Forest and Post-Processing using a threshold to determine the activation of the service (1) or not (0).
 
 **Wind_curtailment_service.py**
+
 Auxiliary script that forecast var15:
 - wind curtail (500 EVs): Indicates whether the user participates (1) or not (0) in the wind curtailment services and thus charges the EV in periods of wind surplus, assuming 500 participating EVs. Regression using Random Forest and Post-Processing using a threshold to determine the activation of the service (1) or not (0).
