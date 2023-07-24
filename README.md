@@ -5,7 +5,7 @@ Python code to do seasonal one-month forecast for different variables.
 **Main.py**
 
 Principal script, that calls the auxiliary forecast scripts for specific variables. 
-The inputs are the variables and the season (Winter, Spring, Summer, Fall) of the forecast.
+The inputs are the following variables and the season (Winter, Spring, Summer, Fall) of the forecast.
 - var1 = 'CP1 ID' 
 - var2 = 'CP1 Plugged'
 - var3 = 'CP1 req (kWh)'
