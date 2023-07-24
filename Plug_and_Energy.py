@@ -280,7 +280,7 @@ def forecast(data, variables, season, start_forecast):
     np.set_printoptions(precision=2)
     
     plt.figure()
-    plot_confusion_matrix(cnf_matrix, classes= ['Plugged= 1','Plugged= 0'], normalize= False, title= season + ' confusion matrix for '+ variables[0])
+    plot_confusion_matrix(cnf_matrix, classes= ['Plugged= 1','Plugged= 0'], normalize= False, title= season + ' confusion matrix for '+ variables[1])
     plt.show()
     
     #Real vs predictions in the same plot
