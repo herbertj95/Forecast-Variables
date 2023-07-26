@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on July 16 of 2023
+Created on July 12 of 2023
 PV Generation Forecast for EV4EU
 @author: Herbert Amezquita
 """
@@ -220,7 +220,7 @@ def forecast(data, var, season, start_forecast):
     
     reg_XGBOOST.fit(xtrain, np.ravel(ytrain))
     
-    'Predictions and pos-processing'
+    'Predictions and post-processing'
     df_XGBOOST = pd.DataFrame(reg_XGBOOST.predict(xtest), columns= ['Prediction'], index= xtest.index)
     df_XGBOOST['Prediction']= np.where(df_XGBOOST['Prediction']< 0, 0 , df_XGBOOST['Prediction'])
     df_XGBOOST['Real'] = ytest
@@ -260,7 +260,13 @@ def forecast(data, var, season, start_forecast):
     print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
     print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
     
-    'Forecast result'
+    if var == 'PV gen #1 (kWh)' or var == 'PV gen #2 (kWh)':
+        print('#################################################################')
+    
+    ###############################################################################################################################
+    'Forecast results'
+    ###############################################################################################################################
+    
     predictions_PVgen = df_XGBOOST.Prediction
     predictions_PVgen.rename(var, inplace= True)
     

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on July 18 of 2023
+Created on July 12 of 2023
 Wind Curtailment Service Forecast for EV4EU
 @author: Herbert Amezquita
 """
@@ -154,7 +154,7 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
 '############################################Wind Curtailment Service Forecast#################################################'
 ###############################################################################################################################
 
-def forecast(var, season, start_forecast):
+def forecast(data, var, season, start_forecast):
     print('Forecast variable: ', var)
     
     'Reading services data'
@@ -272,11 +272,11 @@ def forecast(var, season, start_forecast):
     df_RF[var]= np.where((df_RF.index.hour > 6) | (df_RF.index.hour < 0), 0, df_RF[var])
     df_RF['Wind Curtailment'] = raw_data['Wind Curtailment Service Activation']
     
-    #Accuracy
+    'Accuracy'
     accuracy = accuracy_score(df_RF['Wind Curtailment'],  df_RF[var])
     print(f'Accuracy for {var}: {accuracy:.2f}')
     
-    #Confusion matrix
+    'Confusion matrix'
     cnf_matrix = confusion_matrix(df_RF['Wind Curtailment'],  df_RF[var], labels=[1,0])
     np.set_printoptions(precision=2)
     
@@ -284,8 +284,129 @@ def forecast(var, season, start_forecast):
     plot_confusion_matrix(cnf_matrix, classes= ['Activation= 1','Activation= 0'], normalize= False, title= season + ' confusion matrix for '+ var)
     plt.show()
     
-    'Forecast result'
-    predictions_wind_curtailment = df_RF.loc[:, [var]]
+###############################################################################################################################
+    'Forecasting ps curt buy (Regression)'
+###############################################################################################################################
+    
+    print('#################################################################')
+    print('Forecasting of ps curt buy')
+    data_buy = data.loc[:, ['ps curt buy', var]].copy()
+    
+    'Creating date/time features using datetime column Date as index'
+    data_buy = create_features(data_buy)
+    
+    'Transforming date/time features into two dimensional features'
+    data_buy = cyclical_features(data_buy)
+    
+    'Defining training and test periods'
+    data_train = data_buy.loc[: start_forecast - timedelta(minutes= 15)]
+    data_test = data_buy.loc[start_forecast :]
+    
+    'Array containing the names of all features available'
+    all_features = data_buy.columns.values.tolist()
+    all_features.remove('ps curt buy')
+    all_features= np.array(all_features) 
+        
+    X = data_buy.values
+    Y = X[:, 0] 
+    X = X[:,[x for x in range(1,len(all_features)+1)]]
+    
+    'Feature selection for the model'
+    parameters_XGBOOST = {'n_estimators' : 500,
+                      'learning_rate' : 0.01,
+                      'verbosity' : 0,
+                      'n_jobs' : -1,
+                      'gamma' : 0,
+                      'min_child_weight' : 1,
+                      'max_delta_step' : 0,
+                      'subsample' : 0.7,
+                      'colsample_bytree' : 1,
+                      'colsample_bylevel' : 1,
+                      'colsample_bynode' : 1,
+                      'reg_alpha' : 0,
+                      'reg_lambda' : 1,
+                      'random_state' : 18,
+                      'objective' : 'reg:linear',
+                      'booster' : 'gbtree'}
+    
+    reg_XGBOOST = xgb.XGBRegressor(**parameters_XGBOOST)
+    reg_XGBOOST.fit(X, Y)
+    importance = pd.DataFrame(data= {'Feature': all_features, 'Score': reg_XGBOOST.feature_importances_})
+    importance = importance.sort_values(by= ['Score'], ascending= False)
+    importance.set_index('Feature', inplace= True)
+    
+    'Defining the number of features to use in the models'
+    num_features = 3   #Optimal number of features is 3  
+    
+    'Plot train-test '
+    fig,ax = plt.subplots()
+    coloring = data_buy['ps curt buy'].max()
+    plt.plot(data_train.index, data_train['ps curt buy'], color= "darkcyan", alpha= 0.75)
+    plt.fill_between(data_train.index, coloring, facecolor= "darkcyan", alpha= 0.2)
+    plt.plot(data_test.index, data_test['ps curt buy'], color = "dodgerblue", alpha= 0.60)
+    plt.fill_between(data_test.index, coloring, facecolor= "dodgerblue", alpha= 0.2)
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps curt buy", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(['Train','Test'], frameon= False, loc= 'upper center', ncol= 2)
+    plt.title(season+ " Train - Test split for ps curt buy", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Features used'
+    USE_COLUMNS = importance[:num_features].index.values
+    print('The features used in the XGBOOST model are:', USE_COLUMNS)
+    
+    FORECAST_COLUMN = ['ps curt buy']
+    
+    'XGBOOST model'
+    xtrain = data_train.loc[:, USE_COLUMNS]
+    xtest = data_test.loc[:, USE_COLUMNS]
+    ytrain = data_train.loc[:, FORECAST_COLUMN]
+    ytest = data_test.loc[:, FORECAST_COLUMN]
+    
+    #Using the forecasted values of Wind Curtailment to forecast ps curt buy
+    if var in USE_COLUMNS:
+        xtest[var] = df_RF[var]
+        
+    reg_XGBOOST.fit(xtrain, ytrain)
+    
+    'Predictions and Post-Processing'
+    df_reg = pd.DataFrame(reg_XGBOOST.predict(xtest), columns= ['Prediction'], index= xtest.index)
+    df_reg['Real'] = ytest
+    df_reg[var] = df_RF[var]
+    
+    df_reg['Prediction']= np.where(df_reg[var] == 0, 1 , df_reg['Prediction'])
+    
+    'Real vs predictions plot'
+    fig,ax = plt.subplots()
+    ax.plot(df_reg.Real, label= "Real")
+    ax.plot(df_reg.Prediction, label= "Predicted", ls= '--')
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps curt buy", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold",fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(frameon= False, loc= 'best')
+    plt.title(season + " real vs predicted for ps curt buy", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Errors'
+    MAE_XGBOOST = metrics.mean_absolute_error(df_reg.Real, df_reg.Prediction)
+    RMSE_XGBOOST = np.sqrt(metrics.mean_squared_error(df_reg.Real, df_reg.Prediction))
+    normRMSE_XGBOOST = 100 * RMSE_XGBOOST / ytest['ps curt buy'].max()
+    R2_XGBOOST = metrics.r2_score(df_reg.Real, df_reg.Prediction)
+    
+    print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
+    print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
+    print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
+    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    
+    ###############################################################################################################################
+    'Forecast results'
+    ###############################################################################################################################
+    
+    predictions_wind_curtailment = df_reg.loc[:, [var, 'Prediction']]
+    predictions_wind_curtailment.rename(columns= {'Prediction' : 'ps curt buy'}, inplace= True)
     
     return predictions_wind_curtailment
     

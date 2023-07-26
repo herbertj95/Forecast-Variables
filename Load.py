@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on July 16 of 2023
+Created on July 12 of 2023
 Load Forecast for EV4EU
 @author: Herbert Amezquita
 """
@@ -265,7 +265,13 @@ def forecast(data, var, season, start_forecast):
     print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
     print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
     
-    'Forecast result'
+    if var == 'build cons #1 (kWh)' or var == 'build cons #2 (kWh)':
+        print('#################################################################')
+    
+    ###############################################################################################################################
+    'Forecast results'
+    ###############################################################################################################################
+    
     predictions_load = df_XGBOOST.Prediction
     predictions_load.rename(var, inplace= True)
     

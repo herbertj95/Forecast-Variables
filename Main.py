@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on July 12 of 2023
-Forecast Variables Simulator
+Forecast Variables Simulator for EV4EU
 @author: Herbert Amezquita
 """
 ###############################################################################################################################
@@ -61,7 +61,7 @@ var15 = 'wind curtail (500 EVs)'
 # forecast_var = [var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
 #                 var11, var12, var13, var14, var15]
 
-forecast_var = [var1, var2, var3]
+forecast_var = [var15]
 
 print('Forecasting variable(s):', forecast_var)
 
@@ -72,7 +72,9 @@ summer_start = datetime.strptime('2019-08-23', '%Y-%m-%d')
 fall_start = datetime.strptime('2019-11-21', '%Y-%m-%d')
 
 'Define the forecast season(s) in a list (Winter, Spring, Summer or Fall)'
-forecast_period = ['Winter', 'Spring', 'Summer', 'Fall']
+# forecast_period = ['Winter', 'Spring', 'Summer', 'Fall']
+
+forecast_period = ['Spring']
 
 print('Forecasting season(s): ', forecast_period)
 
@@ -300,7 +302,7 @@ for season in forecast_period:
     
     'Forecast of var13 and var14: congestion mgmt cons (60% th) and congestion mgmt gen (17,5% th)'
     if var13 and var14 in forecast_var:
-        congestion = Congestion_service.forecast([var13, var14], season, start_forecast)
+        congestion = Congestion_service.forecast(data_filtered, [var13, var14], season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':
@@ -321,7 +323,7 @@ for season in forecast_period:
 
     'Forecast of var15: wind curtail (500 EVs)'
     if var15 in forecast_var:
-        wind_curtailment = Wind_curtailment_service.forecast(var15, season, start_forecast)
+        wind_curtailment = Wind_curtailment_service.forecast(data_filtered, var15, season, start_forecast)
         
         #Adding the predictions to the dataframes(s)
         if season == 'Winter':

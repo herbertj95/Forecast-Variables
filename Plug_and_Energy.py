@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on July 14 of 2023
+Created on July 12 of 2023
 Forecast Plug and Energy for EV4EU
 @author: Herbert Amezquita
 """
@@ -197,7 +197,7 @@ def forecast(data, variables, season, start_forecast):
     'Transforming date/time features into two dimensional features'
     data_final = cyclical_features(data_final)
     
-    'Creating lag features of 1 day, 5 days and 1 week before'
+    'Creating lag features of 1 day, 5 days and 1 week before for Energy required'
     data_final = lag_features(data_final,[1,5,7], variables[2])
     data_final.fillna(0, inplace= True)
     data_final.dropna(inplace=True)
@@ -242,7 +242,7 @@ def forecast(data, variables, season, start_forecast):
     Y = X[:, 0] 
     X = X[:,[x for x in range(3,len(all_features)+3)]]
     
-    #XGBOOST
+    'Feature selection for the model'
     cla_XGBOOST = xgb.XGBClassifier()
     cla_XGBOOST.fit(X,Y)
     
@@ -267,15 +267,15 @@ def forecast(data, variables, season, start_forecast):
     
     cla_XGBOOST.fit(xtrain, ytrain)
     
-    #Predictions
+    'Predictions'
     df_cla = pd.DataFrame(cla_XGBOOST.predict(xtest), columns=['Prediction'], index= xtest.index)
     df_cla['Real']= ytest
     
-    #Accuracy
+    'Accuracy'
     accuracy = accuracy_score(df_cla.Real, df_cla.Prediction)
     print(f'XGBOOST Classifier Accuracy for Plug: {accuracy:.2f}')
     
-    #Confusion matrix
+    'Confusion matrix'
     cnf_matrix = confusion_matrix(df_cla.Real, df_cla.Prediction, labels=[1,0])
     np.set_printoptions(precision=2)
     
@@ -283,7 +283,7 @@ def forecast(data, variables, season, start_forecast):
     plot_confusion_matrix(cnf_matrix, classes= ['Plugged= 1','Plugged= 0'], normalize= False, title= season + ' confusion matrix for '+ variables[1])
     plt.show()
     
-    #Real vs predictions in the same plot
+    'Real vs predictions plot'
     fig,ax = plt.subplots()
     ax.plot(df_cla.Real, label= "Real")
     ax.plot(df_cla.Prediction, label= "Predicted", ls= '--')
@@ -297,6 +297,7 @@ def forecast(data, variables, season, start_forecast):
     
     ###############################################################################################################################
     'Forecasting Energy (Regression)'
+    print('#################################################################')
     print('Forecast variable: ', variables[2])
     ###############################################################################################################################
     
@@ -358,7 +359,7 @@ def forecast(data, variables, season, start_forecast):
         
     reg_XGBOOST.fit(xtrain, ytrain)
     
-    #Predictions and Pos-Processing
+    'Predictions and Post-Processing'
     df_reg = pd.DataFrame(reg_XGBOOST.predict(xtest), columns= ['Prediction'], index= xtest.index)
     df_reg['Real'] = ytest
     df_reg[variables[1]] = df_cla.Prediction
@@ -366,6 +367,7 @@ def forecast(data, variables, season, start_forecast):
     df_reg['Prediction'] = np.where((df_reg['Prediction'] < 0) | (df_reg[variables[1]] == 0) & (df_reg.Prediction != 0) , 0 , df_reg['Prediction'])
     df_reg[variables[1]] =  np.where((df_reg[variables[1]] == 1) & (df_reg.Prediction == 0), 0, df_reg[variables[1]])
     
+    'Plots'
     #Regression Plot
     sns.scatterplot(data= df_reg, x= 'Real', y= 'Prediction')
     plt.plot(ytest, ytest, color = "dodgerblue", linewidth= 2) 
@@ -388,7 +390,7 @@ def forecast(data, variables, season, start_forecast):
     plt.title(season+ " real vs predicted for "+ variables[2], alpha= 0.75, weight= "bold", pad= 10, loc= "left")
     plt.show()
     
-    #Errors
+    'Errors'
     MAE_XGBOOST = metrics.mean_absolute_error(df_reg.Real, df_reg.Prediction)
     RMSE_XGBOOST = np.sqrt(metrics.mean_squared_error(df_reg.Real, df_reg.Prediction))
     normRMSE_XGBOOST = 100 * RMSE_XGBOOST / ytest[variables[2]].max()
@@ -401,6 +403,7 @@ def forecast(data, variables, season, start_forecast):
     
     ###############################################################################################################################
     'Forecasting Type of User (Classification)'
+    print('#################################################################')
     print('Forecast variable: ', variables[0])
     ###############################################################################################################################
     
@@ -436,7 +439,7 @@ def forecast(data, variables, season, start_forecast):
     cla_LOG= LogisticRegression()
     cla_LOG.fit(xtrain, ytrain)
     
-    #Predictions
+    'Predictions'
     df_cla2 = pd.DataFrame(cla_LOG.predict(xtest), columns= ['Prediction'], index= xtest.index)
     df_cla2['Real']= ytest
     
@@ -444,9 +447,12 @@ def forecast(data, variables, season, start_forecast):
     df_cla2['Prediction'] = label_encoder.inverse_transform(df_cla2['Prediction'])
     df_cla2['Real'] = label_encoder.inverse_transform(df_cla2['Real'])
     
-    #Accuracy
+    'Accuracy'
     accuracy = accuracy_score(df_cla2.Real, df_cla2.Prediction)
     print(f'Logistic Regression Classifier Accuracy for Type of User: {accuracy:.2f}')
+    
+    if var == 'CP1 ID':
+        print('#################################################################')
     
     ###############################################################################################################################
     'Forecast results'

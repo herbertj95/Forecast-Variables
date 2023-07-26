@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on July 18 of 2023
+Created on July 12 of 2023
 Congestion Service Forecast for EV4EU
 @author: Herbert Amezquita
 """
@@ -154,7 +154,7 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
 '##############################################Congestion Service Forecast####################################################'
 ###############################################################################################################################
 
-def forecast(variables, season, start_forecast):
+def forecast(data, variables, season, start_forecast):
         
     print(f'Forecast variable: PT capacity')
     
@@ -278,16 +278,20 @@ def forecast(variables, season, start_forecast):
     print('RF - Normalized RMSE (%):', round(normRMSE_RF,2))
     print('RF - R square (%):', round(R2_RF,2))
     
-    'Consumption Congestion Service Activation'
+###############################################################################################################################
+    'Consumption Congestion Service Activation and ps cong sell (Regression)'
+    print('#################################################################')
     print('Forecast variable: ', variables[0])
+###############################################################################################################################
+
     df_RF[variables[0]] = np.where((df_RF.Prediction > 0.3), 1, 0)
     df_RF['Consumption Congestion'] = raw_data['Consumption Congestion Service Activation']
     
-    #Accuracy
+    'Accuracy'
     accuracy = accuracy_score(df_RF['Consumption Congestion'],  df_RF[variables[0]])
     print(f'Accuracy for {variables[0]}: {accuracy:.2f}')
     
-    #Confusion matrix
+    'Confusion matrix'
     cnf_matrix = confusion_matrix(df_RF['Consumption Congestion'],  df_RF[variables[0]], labels=[1,0])
     np.set_printoptions(precision=2)
     
@@ -295,16 +299,133 @@ def forecast(variables, season, start_forecast):
     plot_confusion_matrix(cnf_matrix, classes= ['Activation= 1','Activation= 0'], normalize= False, title= season + ' confusion matrix for '+ variables[0])
     plt.show()
     
-    'Generation Congestion Service Activation'
+    print('#################################################################')
+    print('Forecasting of ps cong sell')
+    data_sell = data.loc[:, ['ps cong sell', variables[0]]].copy()
+    
+    'Creating date/time features using datetime column Date as index'
+    data_sell = create_features(data_sell)
+    
+    'Transforming date/time features into two dimensional features'
+    data_sell = cyclical_features(data_sell)
+    
+    'Defining training and test periods'
+    data_train = data_sell.loc[: start_forecast - timedelta(minutes= 15)]
+    data_test = data_sell.loc[start_forecast :]
+    
+    'Array containing the names of all features available'
+    all_features = data_sell.columns.values.tolist()
+    all_features.remove('ps cong sell')
+    all_features= np.array(all_features) 
+        
+    X = data_sell.values
+    Y = X[:, 0] 
+    X = X[:,[x for x in range(1,len(all_features)+1)]]
+    
+    'Feature selection for the model'
+    parameters_XGBOOST = {'n_estimators' : 500,
+                      'learning_rate' : 0.01,
+                      'verbosity' : 0,
+                      'n_jobs' : -1,
+                      'gamma' : 0,
+                      'min_child_weight' : 1,
+                      'max_delta_step' : 0,
+                      'subsample' : 0.7,
+                      'colsample_bytree' : 1,
+                      'colsample_bylevel' : 1,
+                      'colsample_bynode' : 1,
+                      'reg_alpha' : 0,
+                      'reg_lambda' : 1,
+                      'random_state' : 18,
+                      'objective' : 'reg:linear',
+                      'booster' : 'gbtree'}
+    
+    reg_XGBOOST = xgb.XGBRegressor(**parameters_XGBOOST)
+    reg_XGBOOST.fit(X, Y)
+    importance = pd.DataFrame(data= {'Feature': all_features, 'Score': reg_XGBOOST.feature_importances_})
+    importance = importance.sort_values(by= ['Score'], ascending= False)
+    importance.set_index('Feature', inplace= True)
+    
+    'Defining the number of features to use in the models'
+    num_features = 3  #Optimal number of features is 3  
+    
+    'Plot train-test '
+    fig,ax = plt.subplots()
+    coloring = data_sell['ps cong sell'].max()
+    plt.plot(data_train.index, data_train['ps cong sell'], color= "darkcyan", alpha= 0.75)
+    plt.fill_between(data_train.index, coloring, facecolor= "darkcyan", alpha= 0.2)
+    plt.plot(data_test.index, data_test['ps cong sell'], color = "dodgerblue", alpha= 0.60)
+    plt.fill_between(data_test.index, coloring, facecolor= "dodgerblue", alpha= 0.2)
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps cong sell", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(['Train','Test'], frameon= False, loc= 'upper center', ncol= 2)
+    plt.title(season+ " Train - Test split for ps cong sell", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Features used'
+    USE_COLUMNS = importance[:num_features].index.values
+    print('The features used in the XGBOOST model are:', USE_COLUMNS)
+    
+    FORECAST_COLUMN = ['ps cong sell']
+    
+    'XGBOOST model'
+    xtrain = data_train.loc[:, USE_COLUMNS]
+    xtest = data_test.loc[:, USE_COLUMNS]
+    ytrain = data_train.loc[:, FORECAST_COLUMN]
+    ytest = data_test.loc[:, FORECAST_COLUMN]
+    
+    #Using the forecasted values of congestion cons to forecast ps cong sell
+    if variables[0] in USE_COLUMNS:
+        xtest[variables[0]] = df_RF[variables[0]]
+        
+    reg_XGBOOST.fit(xtrain, ytrain)
+    
+    'Predictions and Post-Processing'
+    df_reg = pd.DataFrame(reg_XGBOOST.predict(xtest), columns= ['Prediction'], index= xtest.index)
+    df_reg['Real'] = ytest
+    df_reg[variables[0]] = df_RF[variables[0]]
+    
+    df_reg['Prediction']= np.where(df_reg[variables[0]] == 0, 1 , df_reg['Prediction'])
+    
+    'Real vs predictions plot'
+    fig,ax = plt.subplots()
+    ax.plot(df_reg.Real, label= "Real")
+    ax.plot(df_reg.Prediction, label= "Predicted", ls= '--')
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps cong sell", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold",fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(frameon= False, loc= 'best')
+    plt.title(season + " real vs predicted for ps cong sell", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Errors'
+    MAE_XGBOOST = metrics.mean_absolute_error(df_reg.Real, df_reg.Prediction)
+    RMSE_XGBOOST = np.sqrt(metrics.mean_squared_error(df_reg.Real, df_reg.Prediction))
+    normRMSE_XGBOOST = 100 * RMSE_XGBOOST / ytest['ps cong sell'].max()
+    R2_XGBOOST = metrics.r2_score(df_reg.Real, df_reg.Prediction)
+    
+    print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
+    print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
+    print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
+    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    
+###############################################################################################################################
+    'Generation Congestion Service Activation and ps cong buy (Regression)'
+    print('#################################################################')
     print('Forecast variable: ', variables[1])
+###############################################################################################################################
+
     df_RF[variables[1]] = np.where((df_RF.index.hour > 12) & (df_RF.index.hour < 20) & (df_RF.Prediction < 0.175), 1, 0)
     df_RF['Generation Congestion'] = raw_data['Generation Congestion Service Activation']
     
-    #Accuracy
+    'Accuracy'
     accuracy = accuracy_score(df_RF['Generation Congestion'],  df_RF[variables[1]])
     print(f'Accuracy for {variables[1]}: {accuracy:.2f}')
     
-    #Confusion matrix
+    'Confusion matrix'
     cnf_matrix = confusion_matrix(df_RF['Generation Congestion'],  df_RF[variables[1]], labels=[1,0])
     np.set_printoptions(precision=2)
     
@@ -312,8 +433,127 @@ def forecast(variables, season, start_forecast):
     plot_confusion_matrix(cnf_matrix, classes= ['Activation= 1','Activation= 0'], normalize= False, title= season + ' confusion matrix for '+ variables[1])
     plt.show()
     
-    'Forecast result'
-    predictions_congestion = df_RF.loc[:, [variables[0], variables[1]]]
+    print('#################################################################')
+    print('Forecasting of ps cong buy')
+    data_buy = data.loc[:, ['ps cong buy', variables[1]]].copy()
+    
+    'Creating date/time features using datetime column Date as index'
+    data_buy = create_features(data_buy)
+    
+    'Transforming date/time features into two dimensional features'
+    data_buy = cyclical_features(data_buy)
+    
+    'Defining training and test periods'
+    data_train = data_buy.loc[: start_forecast - timedelta(minutes= 15)]
+    data_test = data_buy.loc[start_forecast :]
+    
+    'Array containing the names of all features available'
+    all_features = data_buy.columns.values.tolist()
+    all_features.remove('ps cong buy')
+    all_features= np.array(all_features) 
+        
+    X = data_buy.values
+    Y = X[:, 0] 
+    X = X[:,[x for x in range(1,len(all_features)+1)]]
+    
+    'Feature selection for the model'
+    parameters_XGBOOST = {'n_estimators' : 500,
+                      'learning_rate' : 0.01,
+                      'verbosity' : 0,
+                      'n_jobs' : -1,
+                      'gamma' : 0,
+                      'min_child_weight' : 1,
+                      'max_delta_step' : 0,
+                      'subsample' : 0.7,
+                      'colsample_bytree' : 1,
+                      'colsample_bylevel' : 1,
+                      'colsample_bynode' : 1,
+                      'reg_alpha' : 0,
+                      'reg_lambda' : 1,
+                      'random_state' : 18,
+                      'objective' : 'reg:linear',
+                      'booster' : 'gbtree'}
+    
+    reg_XGBOOST2 = xgb.XGBRegressor(**parameters_XGBOOST)
+    reg_XGBOOST2.fit(X, Y)
+    importance = pd.DataFrame(data= {'Feature': all_features, 'Score': reg_XGBOOST2.feature_importances_})
+    importance = importance.sort_values(by= ['Score'], ascending= False)
+    importance.set_index('Feature', inplace= True)
+    
+    'Defining the number of features to use in the models'
+    num_features = 3   #Optimal number of features is 3  
+    
+    'Plot train-test '
+    fig,ax = plt.subplots()
+    coloring = data_buy['ps cong buy'].max()
+    plt.plot(data_train.index, data_train['ps cong buy'], color= "darkcyan", alpha= 0.75)
+    plt.fill_between(data_train.index, coloring, facecolor= "darkcyan", alpha= 0.2)
+    plt.plot(data_test.index, data_test['ps cong buy'], color = "dodgerblue", alpha= 0.60)
+    plt.fill_between(data_test.index, coloring, facecolor= "dodgerblue", alpha= 0.2)
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps cong buy", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(['Train','Test'], frameon= False, loc= 'upper center', ncol= 2)
+    plt.title(season+ " Train - Test split for ps cong buy", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Features used'
+    USE_COLUMNS = importance[:num_features].index.values
+    print('The features used in the XGBOOST model are:', USE_COLUMNS)
+    
+    FORECAST_COLUMN = ['ps cong buy']
+    
+    'XGBOOST model'
+    xtrain = data_train.loc[:, USE_COLUMNS]
+    xtest = data_test.loc[:, USE_COLUMNS]
+    ytrain = data_train.loc[:, FORECAST_COLUMN]
+    ytest = data_test.loc[:, FORECAST_COLUMN]
+    
+    #Using the forecasted values of congestion gen to forecast ps cong buy
+    if variables[1] in USE_COLUMNS:
+        xtest[variables[1]] = df_RF[variables[1]]
+        
+    reg_XGBOOST2.fit(xtrain, ytrain)
+    
+    'Predictions and Post-Processing'
+    df_reg2 = pd.DataFrame(reg_XGBOOST2.predict(xtest), columns= ['Prediction'], index= xtest.index)
+    df_reg2['Real'] = ytest
+    df_reg2[variables[1]] = df_RF[variables[1]]
+    
+    df_reg2['Prediction']= np.where(df_reg2[variables[1]] == 0, 1 , df_reg2['Prediction'])
+    
+    'Real vs predictions plot'
+    fig,ax = plt.subplots()
+    ax.plot(df_reg2.Real, label= "Real")
+    ax.plot(df_reg2.Prediction, label= "Predicted", ls= '--')
+    plt.xlabel("Date", alpha= 0.75, weight= "bold")
+    plt.ylabel("ps cong buy", alpha= 0.75, weight= "bold")
+    plt.xticks(alpha= 0.75,weight= "bold",fontsize= 11)
+    plt.yticks(alpha= 0.75,weight= "bold", fontsize= 11)
+    plt.legend(frameon= False, loc= 'best')
+    plt.title(season + " real vs predicted for ps cong buy", alpha= 0.75, weight= "bold", pad= 10, loc= "left")
+    plt.show()
+    
+    'Errors'
+    MAE_XGBOOST = metrics.mean_absolute_error(df_reg2.Real, df_reg2.Prediction)
+    RMSE_XGBOOST = np.sqrt(metrics.mean_squared_error(df_reg2.Real, df_reg2.Prediction))
+    normRMSE_XGBOOST = 100 * RMSE_XGBOOST / ytest['ps cong buy'].max()
+    R2_XGBOOST = metrics.r2_score(df_reg2.Real, df_reg2.Prediction)
+    
+    print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
+    print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
+    print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
+    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    
+    ###############################################################################################################################
+    'Forecast results'
+    ###############################################################################################################################
+    
+    predictions_congestion = df_reg.loc[:, [variables[0], 'Prediction']]
+    predictions_congestion.rename(columns= {'Prediction' : 'ps cong sell'}, inplace= True)
+    predictions_congestion = predictions_congestion.join(df_reg2.loc[:, [variables[1], 'Prediction']])
+    predictions_congestion.rename(columns= {'Prediction' : 'ps cong buy'}, inplace= True)
     
     return predictions_congestion
     
