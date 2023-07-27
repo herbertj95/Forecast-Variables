@@ -264,7 +264,7 @@ def forecast(data, var, season, start_forecast):
     print('RF - Mean Absolute Error (MAE):', round(MAE_RF,2))
     print('RF - Root Mean Square Error (RMSE):',  round(RMSE_RF,2))
     print('RF - Normalized RMSE (%):', round(normRMSE_RF,2))
-    print('RF - R square (%):', round(R2_RF,2))
+    #print('RF - R square (%):', round(R2_RF,2))
     
     'Post-Processing'
     vehicles= 500
@@ -399,7 +399,7 @@ def forecast(data, var, season, start_forecast):
     print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
     print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
     print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
-    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    #print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
     
     ###############################################################################################################################
     'Forecast results'

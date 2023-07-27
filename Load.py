@@ -263,7 +263,7 @@ def forecast(data, var, season, start_forecast):
     print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
     print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
     print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
-    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    #print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
     
     if var == 'build cons #1 (kWh)' or var == 'build cons #2 (kWh)':
         print('#################################################################')

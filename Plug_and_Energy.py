@@ -399,7 +399,7 @@ def forecast(data, variables, season, start_forecast):
     print('XGBOOST- Mean Absolute Error (MAE):', round(MAE_XGBOOST,2))
     print('XGBOOST - Root Mean Square Error (RMSE):',  round(RMSE_XGBOOST,2))
     print('XGBOOST - Normalized RMSE (%):', round(normRMSE_XGBOOST,2))
-    print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
+    #print('XGBOOST - R square (%):', round(R2_XGBOOST,2))
     
     ###############################################################################################################################
     'Forecasting Type of User (Classification)'
@@ -409,8 +409,12 @@ def forecast(data, variables, season, start_forecast):
     
     'Label encoding'
     label_encoder = LabelEncoder()
-    data_test[variables[0]] = label_encoder.fit_transform(data_test[variables[0]])
-    data_train[variables[0]] = label_encoder.fit_transform(data_train[variables[0]])
+    data_final_encoded = data_final.copy()
+    data_final_encoded[variables[0]] = label_encoder.fit_transform(data_final_encoded[variables[0]])
+    
+    'Defining training and test periods'
+    data_train = data_final_encoded.loc[: start_forecast - timedelta(minutes= 15)]
+    data_test = data_final_encoded.loc[start_forecast :]
     
     'Array containing the names of all features available'
     all_features = data_final.columns.values.tolist()
@@ -451,7 +455,7 @@ def forecast(data, variables, season, start_forecast):
     accuracy = accuracy_score(df_cla2.Real, df_cla2.Prediction)
     print(f'Logistic Regression Classifier Accuracy for Type of User: {accuracy:.2f}')
     
-    if var == 'CP1 ID':
+    if variables[0] == 'CP1 ID':
         print('#################################################################')
     
     ###############################################################################################################################

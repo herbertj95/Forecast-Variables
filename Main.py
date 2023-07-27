@@ -58,10 +58,10 @@ var13 = 'congestion mgmt cons (60% th)'
 var14 = 'congestion mgmt gen (17,5% th)'
 var15 = 'wind curtail (500 EVs)'
 
-# forecast_var = [var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
-#                 var11, var12, var13, var14, var15]
+forecast_var = [var1, var2, var3, var4, var5, var6, var7, var8, var9, var10,
+                var11, var12, var13, var14, var15]
 
-forecast_var = [var15]
+# forecast_var = [var1,var2,var3]
 
 print('Forecasting variable(s):', forecast_var)
 
@@ -72,9 +72,9 @@ summer_start = datetime.strptime('2019-08-23', '%Y-%m-%d')
 fall_start = datetime.strptime('2019-11-21', '%Y-%m-%d')
 
 'Define the forecast season(s) in a list (Winter, Spring, Summer or Fall)'
-# forecast_period = ['Winter', 'Spring', 'Summer', 'Fall']
+forecast_period = ['Winter', 'Spring', 'Summer', 'Fall']
 
-forecast_period = ['Spring']
+# forecast_period = ['Winter']
 
 print('Forecasting season(s): ', forecast_period)
 
@@ -83,7 +83,7 @@ print('Forecasting season(s): ', forecast_period)
 ###############################################################################################################################
 
 'Reading the raw data'
-data = pd.read_csv('./Datasets/Data1.csv', parse_dates= ['date (dd/mm/yy hh:mm)'])
+data = pd.read_csv('./Datasets/Data2.csv', parse_dates= ['date (dd/mm/yy hh:mm)'])
 data.rename(columns = {'date (dd/mm/yy hh:mm)' : 'Date'}, inplace= True)
 data.set_index('Date', inplace= True)
 
